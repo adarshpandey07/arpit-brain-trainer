@@ -34,6 +34,14 @@
     "cooldownMinutes": 30
   },
 
+  "a2a": {
+    "enabled": true,
+    "maxParallelAgents": 3,
+    "agentTimeoutMs": 180000,
+    "enableInterAgentComm": true,
+    "topics": ["discovery", "trending-niche", "template-built", "mockups-ready", "template-listed", "seo-optimization", "performance-insight", "low-performer"]
+  },
+
   "priorities": {
     "order": [
       "list-ready-templates",

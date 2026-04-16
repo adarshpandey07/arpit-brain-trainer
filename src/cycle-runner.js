@@ -1,5 +1,5 @@
 /**
- * ENHANCED CYCLE RUNNER — GOD MODE
+ * ENHANCED CYCLE RUNNER — GOD MODE + A2A
  *
  * This is Arpit's brain. Not a dumb script that asks "what next?"
  * This is an autonomous, self-improving intelligence that:
@@ -11,10 +11,11 @@
  *   5. SELF-REFLECTS after each cycle to improve
  *   6. MODIFIES its own config when it discovers better approaches
  *   7. PURSUES the revenue goal AGGRESSIVELY — ₹50,000/month is not optional
+ *   8. SPAWNS PARALLEL AGENTS (A2A) that communicate with each other
  *
- * The brain does NOT ask Claude "what should I do?"
- * The brain DECIDES what to do via PriorityEngine, then asks Claude
- * to REFINE and IMPROVE that decision with deep reasoning.
+ * TWO MODES:
+ *   - SINGLE MODE: Priority Engine → Claude refines → execute (fast, low resource)
+ *   - A2A MODE: Multiple agents run in PARALLEL, talk to each other (powerful, more Claude calls)
  */
 
 import { execSync } from 'child_process';
@@ -24,6 +25,7 @@ import { fileURLToPath } from 'url';
 import { askClaude } from './claude-interface.js';
 import { PriorityEngine } from './priority-engine.js';
 import { EscalationEngine } from './escalation.js';
+import { AgentManager } from './a2a/agent-manager.js';
 import { log, logError } from './logger.js';
 import 'dotenv/config';
 
@@ -324,11 +326,12 @@ function updateCatalogAfterAction(action, result) {
   syncCatalogToMoneymaker(catalog);
 }
 
-// ─── RUN SINGLE CYCLE ────────────────────────────────────────────────
+// ─── RUN SINGLE CYCLE (supports both single + A2A mode) ─────────────
 
 export async function runCycle({ cycleId, cycleCount, memory, bot }) {
   const startTime = Date.now();
   const settings = loadSettings();
+  const useA2A = settings.a2a?.enabled !== false; // A2A on by default
 
   // Initialize engines
   const priorityEngine = new PriorityEngine(memory, settings);
@@ -343,8 +346,106 @@ export async function runCycle({ cycleId, cycleCount, memory, bot }) {
   const envBlockers = escalation.checkEnvironmentBlockers();
   const activeBlockers = escalation.getActiveBlockers();
 
+  // ═══ STEP 3: Decide execution mode ═════════════════════════════
+  if (useA2A) {
+    return runA2ACycle({ cycleId, cycleCount, memory, bot, state, settings, activeBlockers, escalation, startTime });
+  } else {
+    return runSingleActionCycle({ cycleId, cycleCount, memory, bot, state, settings, activeBlockers, escalation, priorityEngine, startTime });
+  }
+}
+
+// ─── A2A MODE: Parallel agents ───────────────────────────────────────
+
+async function runA2ACycle({ cycleId, cycleCount, memory, bot, state, settings, activeBlockers, escalation, startTime }) {
+  log('═══ STEP 3: A2A MODE — Spawning parallel agents...');
+
+  const catalog = loadCatalog();
+  const manager = new AgentManager({
+    memory,
+    catalog,
+    claudeFn: askClaude,
+    settings,
+    blockers: activeBlockers,
+  });
+
+  // Plan which agents to run
+  const agentPlans = manager.planAgents();
+
+  if (agentPlans.length === 0) {
+    log('[A2A] No agents to spawn — falling back to single mode');
+    const priorityEngine = new PriorityEngine(memory, settings);
+    return runSingleActionCycle({ cycleId, cycleCount, memory, bot, state, settings, activeBlockers, escalation, priorityEngine, startTime });
+  }
+
+  // Run all agents in parallel
+  const a2aResult = await manager.runParallel();
+  const report = AgentManager.synthesizeReport(a2aResult);
+
+  // Process results from each agent
+  const allActions = [];
+  const allLearnings = [];
+
+  for (const agentReport of a2aResult.agents) {
+    if (agentReport.state === 'completed' && agentReport.result) {
+      const action = agentReport.result.action;
+      if (action && action !== 'skip') {
+        allActions.push(`${agentReport.role}:${action}`);
+        updateCatalogAfterAction(action, agentReport.result);
+        memory.updateWeeklyProgress(action, agentReport.result.success !== false);
+      }
+    }
+
+    // Collect findings as learnings
+    if (agentReport.findings) {
+      for (const finding of agentReport.findings) {
+        if (finding.message) {
+          allLearnings.push(`[${agentReport.role}] ${finding.message}`);
+        }
+      }
+    }
+  }
+
+  // Save top learnings
+  for (const learning of allLearnings.slice(0, 3)) {
+    memory.addLearning(learning);
+  }
+
+  // Check for strategy suggestions from Analyst
+  const strategySuggestion = a2aResult.sharedState?.['strategy-suggestion'];
+  if (strategySuggestion) {
+    applyStrategyEvolution(strategySuggestion, settings);
+  }
+
+  const durationMs = Date.now() - startTime;
+
+  return {
+    cycleId,
+    cycleCount,
+    timestamp: new Date().toISOString(),
+    action: allActions.join(' + ') || 'a2a-no-actions',
+    reasoning: report.summary,
+    learning: allLearnings[0] || null,
+    selfReflection: `A2A cycle: ${a2aResult.parallelCount} agents, ${report.interAgentMessages} messages exchanged`,
+    strategyEvolution: strategySuggestion || null,
+    urgencyLevel: 'high',
+    status: a2aResult.agents.some(a => a.state === 'completed') ? 'success' : 'failed',
+    summary: report.summary,
+    durationMs,
+    mode: 'a2a',
+    parallelAgents: a2aResult.parallelCount,
+    interAgentMessages: report.interAgentMessages,
+    agentDetails: a2aResult.agents.map(a => ({
+      id: a.agentId, role: a.role, state: a.state,
+      action: a.result?.action, durationMs: a.durationMs,
+    })),
+  };
+}
+
+// ─── SINGLE MODE: One action per cycle ───────────────────────────────
+
+async function runSingleActionCycle({ cycleId, cycleCount, memory, bot, state, settings, activeBlockers, escalation, priorityEngine, startTime }) {
   // ═══ STEP 3: Priority Engine Decides ════════════════════════════
-  log('═══ STEP 3: Priority Engine deciding...');
+  log('═══ STEP 3: SINGLE MODE — Priority Engine deciding...');
   const priorityDecision = priorityEngine.decide(
     state.catalog,
     activeBlockers,
@@ -358,20 +459,62 @@ export async function runCycle({ cycleId, cycleCount, memory, bot }) {
   const rawDecision = await askClaude(godPrompt);
 
   let decision;
+  let claudeFailed = false;
+
   try {
     const jsonMatch = rawDecision.match(/\{[\s\S]*\}/);
     decision = JSON.parse(jsonMatch ? jsonMatch[0] : rawDecision);
+
+    // CHECK: Did Claude return an idle/unavailable fallback?
+    if (decision.action === 'idle' && decision.reasoning?.includes('Claude unavailable')) {
+      claudeFailed = true;
+    }
   } catch (err) {
     logError(`Failed to parse Claude decision: ${rawDecision.slice(0, 200)}`);
-    // Fall back to priority engine's decision
+    claudeFailed = true;
+    // Use priority engine decision directly — NO idle fallback
     decision = {
       action: priorityDecision.action,
       reasoning: priorityDecision.reasoning,
-      learning: 'Claude response parsing failed — using priority engine decision',
+      learning: 'Claude response parsing failed — using priority engine decision directly',
       selfReflection: 'N/A',
       strategyEvolution: null,
-      urgencyLevel: 'medium',
+      urgencyLevel: 'high',
     };
+  }
+
+  // ═══ CLAUDE FAILED — SEND CRITICAL ALERT, USE PRIORITY ENGINE ══
+  if (claudeFailed) {
+    logError('🚨 CLAUDE CLI FAILED — Sending critical alert');
+
+    // NEVER go idle — use Priority Engine's decision instead
+    decision = {
+      action: priorityDecision.action,
+      reasoning: `[AUTO] Claude unavailable — Priority Engine executing: ${priorityDecision.reasoning}`,
+      learning: 'Claude CLI failed. Brain used Priority Engine autonomously. Check Max subscription and CLI auth.',
+      selfReflection: 'Operating without Claude — reduced intelligence but still executing.',
+      strategyEvolution: null,
+      urgencyLevel: 'critical',
+    };
+
+    // Send CRITICAL alert to Telegram
+    if (bot) {
+      await bot.send([
+        '🚨🚨 *CRITICAL — CLAUDE CLI DOWN!* 🚨🚨',
+        '',
+        'Claude Code CLI is not responding.',
+        'Brain is running on Priority Engine alone (reduced intelligence).',
+        '',
+        '*Fix:* SSH into EC2 and run:',
+        '```',
+        'ssh ec2-user@13.203.99.103',
+        'claude',
+        '/login',
+        '```',
+        '',
+        `Executing anyway: \`${priorityDecision.action}\``,
+      ].join('\n'));
+    }
   }
 
   // Log self-reflection
@@ -380,7 +523,7 @@ export async function runCycle({ cycleId, cycleCount, memory, bot }) {
   }
 
   // Log if Claude overrode priority engine
-  if (decision.action !== priorityDecision.action) {
+  if (!claudeFailed && decision.action !== priorityDecision.action) {
     log(`[Override] Claude changed action: ${priorityDecision.action} → ${decision.action}`);
     log(`[Override] Reason: ${decision.confidenceOverride || decision.reasoning}`);
   }
@@ -410,7 +553,7 @@ export async function runCycle({ cycleId, cycleCount, memory, bot }) {
         if (fallbackResult.success) {
           result = fallbackResult;
           decision.action = fallbackAction;
-          decision.reasoning += ` (fallback from failed ${decision.action})`;
+          decision.reasoning += ` (fallback from failed action)`;
           log(`[Fallback] Success: ${fallbackAction}`);
         }
       }
@@ -423,13 +566,11 @@ export async function runCycle({ cycleId, cycleCount, memory, bot }) {
   // ═══ STEP 7: Learn + Evolve ═════════════════════════════════════
   log('═══ STEP 7: Learning and evolving...');
 
-  // Save learning
   if (decision.learning && decision.learning !== 'null') {
     memory.addLearning(decision.learning);
     log(`[Learn] ${decision.learning}`);
   }
 
-  // Apply strategy evolution if Claude suggested one
   if (decision.strategyEvolution && decision.strategyEvolution !== 'null') {
     const evolved = applyStrategyEvolution(decision.strategyEvolution, settings);
     if (evolved) {
@@ -437,7 +578,6 @@ export async function runCycle({ cycleId, cycleCount, memory, bot }) {
     }
   }
 
-  // Update weekly progress
   memory.updateWeeklyProgress(decision.action, result.success);
 
   const durationMs = Date.now() - startTime;
@@ -455,6 +595,8 @@ export async function runCycle({ cycleId, cycleCount, memory, bot }) {
     status: result.success ? 'success' : 'failed',
     summary: result.output?.slice(0, 500) || '',
     durationMs,
+    mode: 'single',
+    claudeAvailable: !claudeFailed,
     priorityEngineAgreed: decision.action === priorityDecision.action,
   };
 }
