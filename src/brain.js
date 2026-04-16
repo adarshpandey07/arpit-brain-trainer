@@ -469,12 +469,12 @@ async function main() {
     logError(`Template sync failed: ${err.message}`);
   }
 
-  // Start API server
+  // Start API server (non-blocking — brain runs even if API fails)
   try {
     await startApiServer();
     log('🌐 API server started');
   } catch (err) {
-    logError(`API server failed: ${err.message}`);
+    logError(`API server failed: ${err.message} — brain continues without API`);
   }
 
   // Start Telegram bot
@@ -544,7 +544,18 @@ process.on('SIGINT', async () => {
 
 process.on('uncaughtException', async (err) => {
   logError(`UNCAUGHT: ${err.message}\n${err.stack}`);
-  await bot.send(`🚨 *UNCAUGHT EXCEPTION*\n\n${err.message}\n\nBrain attempting to continue...`);
+  try {
+    await bot.send(`🚨 *UNCAUGHT EXCEPTION*\n\n${err.message}\n\nBrain attempting to continue...`);
+  } catch {}
+  // Don't exit — let the brain survive non-fatal errors
+});
+
+process.on('unhandledRejection', async (reason) => {
+  const msg = reason instanceof Error ? reason.message : String(reason);
+  logError(`UNHANDLED REJECTION: ${msg}`);
+  try {
+    await bot.send(`⚠️ *Unhandled Rejection*\n\n${msg}\n\nBrain continues.`);
+  } catch {}
 });
 
 main().catch(async (err) => {

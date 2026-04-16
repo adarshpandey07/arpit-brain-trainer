@@ -6,7 +6,8 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { log } from './logger.js';
+import { execSync } from 'child_process';
+import { log, logError } from './logger.js';
 import 'dotenv/config';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -92,10 +93,34 @@ export async function startApiServer() {
     } catch { res.json([]); }
   });
 
-  return new Promise((resolve) => {
-    app.listen(PORT, () => {
+  return new Promise((resolve, reject) => {
+    const server = app.listen(PORT, () => {
       log(`[API] Server running on port ${PORT}`);
-      resolve();
+      resolve(server);
+    });
+
+    server.on('error', async (err) => {
+      if (err.code === 'EADDRINUSE') {
+        log(`[API] Port ${PORT} in use — killing old process and retrying...`);
+        try {
+          execSync(`fuser -k ${PORT}/tcp 2>/dev/null || true`);
+          await new Promise(r => setTimeout(r, 1000));
+
+          const retryServer = app.listen(PORT, () => {
+            log(`[API] Server running on port ${PORT} (after retry)`);
+            resolve(retryServer);
+          });
+          retryServer.on('error', (retryErr) => {
+            logError(`[API] Retry failed: ${retryErr.message}`);
+            reject(retryErr);
+          });
+        } catch (killErr) {
+          logError(`[API] Could not free port ${PORT}: ${killErr.message}`);
+          reject(err);
+        }
+      } else {
+        reject(err);
+      }
     });
   });
 }
