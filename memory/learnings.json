@@ -1,0 +1,14 @@
+[
+  {
+    "text": "2 templates built (budget-tracker $7.99, bookkeeping $9.99), mockups ready for both. Listing blocked by missing ETSY_API_KEY.",
+    "addedAt": "2026-04-15T18:25:22.444Z"
+  },
+  {
+    "text": "Listing pipeline requires ETSY_API_KEY in .env — register at https://www.etsy.com/developers. Without this, zero revenue is possible.",
+    "addedAt": "2026-04-15T18:25:22.444Z"
+  },
+  {
+    "text": "Brain v2.0 upgrade: Priority Engine handles action selection, Claude refines with god-mode deep thinking. Self-evolution enabled.",
+    "addedAt": "2026-04-16T00:00:00.000Z"
+  }
+]
