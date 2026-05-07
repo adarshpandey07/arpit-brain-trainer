@@ -39,3 +39,11 @@ npm run weekly-report  # Show weekly progress
 - Runs on AWS EC2 (ap-south-1) as a systemd service
 - Uses Claude Code CLI (Max auth) as the AI decision engine
 - Telegram bot @Adarsh_money_maker_bot for control
+
+## Status: NOT YET DEPLOYED
+
+V1 (`adarsh-pandey-money-maker-brain`) is currently running on EC2. V2 (this repo) is local-only.
+
+When porting V2 to production, port these patterns from V1 first:
+- **Approval gate** — `/list` creates DRAFT only; owner publishes via `/approve <id>` Telegram cmd. Rationale: first 10 listings shape Etsy algorithm trust; one bad listing = permanent ranking penalty. See V1's `src/brain.js` (commands), `src/cycle-runner.js` (action routing), and the moneymaker repo's `src/etsy/listings.js` (createDraftListing helper).
+- **Etsy v3 API quirks** — see `adarsh-moneymaker/OPERATIONS.md` for the auth/listing gotchas log (combined `keystring:secret` x-api-key, `name` field on file uploads, taxonomy IDs, tag sanitization rules).
