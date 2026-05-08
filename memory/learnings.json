@@ -1,0 +1,38 @@
+[
+  {
+    "text": "2 templates built (budget-tracker $7.99, bookkeeping $9.99), mockups ready for both. Listing blocked by missing ETSY_API_KEY.",
+    "addedAt": "2026-04-15T18:25:22.444Z"
+  },
+  {
+    "text": "Listing pipeline requires ETSY_API_KEY in .env \u2014 register at https://www.etsy.com/developers. Without this, zero revenue is possible.",
+    "addedAt": "2026-04-15T18:25:22.444Z"
+  },
+  {
+    "text": "Brain v2.0 upgrade: Priority Engine handles action selection, Claude refines with god-mode deep thinking. Self-evolution enabled.",
+    "addedAt": "2026-04-16T00:00:00.000Z"
+  },
+  {
+    "text": "[builder] debt-payoff built successfully",
+    "addedAt": "2026-04-16T18:41:24.266Z"
+  },
+  {
+    "text": "[builder] Mockups generated for debt-payoff",
+    "addedAt": "2026-04-16T18:41:24.267Z"
+  },
+  {
+    "text": "[builder] savings-goal built successfully",
+    "addedAt": "2026-04-16T19:00:14.491Z"
+  },
+  {
+    "text": "[builder] Mockups generated for savings-goal",
+    "addedAt": "2026-04-16T19:00:14.491Z"
+  },
+  {
+    "text": "SUPERSEDES earlier ETSY_API_KEY blocker: Etsy API access is resolved via Make.com as a proxy. Use the `make-etsy` MCP server (configured via MAKE_MCP_URL + MAKE_MCP_TOKEN) to trigger Etsy listing scenarios built in Make.com \u2014 do NOT wait for a direct ETSY_API_KEY. The Lister agent should invoke Make.com scenarios (via MCP tools or webhook) for any Etsy listing action.",
+    "addedAt": "2026-04-16T20:03:06.000Z"
+  },
+  {
+    "text": "READ memory/HANDOFF_ETSY_MAKE.md FIRST next cycle. Make.com API token + webhook URL now in .env. Scenario build is blocked on Etsy connection-app mismatch (existing conn is for custom etsy3 app; official etsy:makeApiCall module needs a fresh official-Etsy connection). Check for new connection each cycle; when present, POST blueprint to /api/v2/scenarios to build the lister scenario and start listing templates from /home/ec2-user/adarsh-moneymaker/etsy-money/.",
+    "addedAt": "2026-04-16T20:16:22.000Z"
+  }
+]

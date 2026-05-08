@@ -1,0 +1,59 @@
+{
+  "cycleIntervalHours": 3,
+  "heartbeatIntervalHours": 6,
+  "maxTemplatesPerWeek": 5,
+  "strategy": "aggressive",
+  "focusNiche": null,
+  "createdAt": "2026-04-16",
+  "version": "2.0.0",
+
+  "server": {
+    "instanceId": "i-0d87fc7baa5fe3962",
+    "publicIp": "13.203.99.103",
+    "region": "ap-south-1",
+    "instanceType": "t3.small"
+  },
+
+  "telegram": {
+    "botUsername": "Adarsh_money_maker_bot",
+    "botUrl": "https://t.me/Adarsh_money_maker_bot"
+  },
+
+  "weeklyGoals": {
+    "templatesBuild": 3,
+    "templatesListed": 2,
+    "mockupsGenerated": 3,
+    "researchSessions": 1,
+    "targetLiveListings": 20
+  },
+
+  "escalation": {
+    "maxConsecutiveFailures": 2,
+    "alertOnBlocker": true,
+    "autoFallback": true,
+    "cooldownMinutes": 30
+  },
+
+  "a2a": {
+    "enabled": true,
+    "maxParallelAgents": 3,
+    "agentTimeoutMs": 180000,
+    "enableInterAgentComm": true,
+    "topics": ["discovery", "trending-niche", "template-built", "mockups-ready", "template-listed", "seo-optimization", "performance-insight", "low-performer"]
+  },
+
+  "priorities": {
+    "order": [
+      "list-ready-templates",
+      "generate-mockups-for-built",
+      "build-planned-templates",
+      "research-new-niches",
+      "optimize-live-listings",
+      "idle"
+    ],
+    "buildOrder": "tier-first",
+    "listingDays": ["Friday", "Saturday"],
+    "researchDays": ["Monday"],
+    "skipIdleUntilLiveCount": 20
+  }
+}

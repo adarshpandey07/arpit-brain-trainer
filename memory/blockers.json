@@ -1,0 +1,12 @@
+[
+  {
+    "id": "etsy-api-missing",
+    "message": "ETSY_API_KEY not set in .env",
+    "severity": "critical",
+    "firstSeen": "2026-05-06T00:00:00.801Z",
+    "lastSeen": "2026-05-08T12:00:00.164Z",
+    "lastNotified": null,
+    "hitCount": 22,
+    "resolved": false
+  }
+]
