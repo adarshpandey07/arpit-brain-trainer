@@ -2,6 +2,14 @@
 
 V2 of the Moneymaker autonomous agent. **Observer-only** — V2 watches V1, writes structured suggestions for V1 to act on. V2 does NOT build, list, or publish anything itself.
 
+## Deployment
+
+- EC2 path: `/home/ec2-user/arpit-brain-trainer/`
+- systemd unit: `arpit-trainer.service`
+- API server: **port 3001** (V1 owns 3000 — keep these distinct or you'll get a mutual-kill loop, see brain repo's `BLOCKERS.md` § "V1 ↔ V2 API_PORT collision")
+- Cycle: every 3h
+- Daily Telegram digest: 8 AM IST (deduped per day)
+
 ## Architecture
 
 ```
