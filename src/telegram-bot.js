@@ -21,7 +21,12 @@ export class TelegramBot {
       return;
     }
 
-    this.bot = new TelegramBotApi(this.token, { polling: true });
+    // V2 is observer-only per V1+V2 architecture — do NOT poll Telegram.
+    // V1 owns the single getUpdates poller for shared bot token; double-polling
+    // causes 409 Conflict errors every ~7s (Blocker #7). sendMessage still works.
+    // Set ENABLE_POLLING=true to override (only if V2 ever becomes command-active).
+    const enablePolling = process.env.ENABLE_POLLING === 'true';
+    this.bot = new TelegramBotApi(this.token, { polling: enablePolling });
 
     this.bot.on('message', async (msg) => {
       if (this.chatId && String(msg.chat.id) !== String(this.chatId)) {
@@ -69,7 +74,7 @@ export class TelegramBot {
       logError(`[Telegram] Polling error: ${err.message}`);
     });
 
-    log('[Telegram] Bot started (polling mode)');
+    log(`[Telegram] Bot started (${enablePolling ? 'polling' : 'send-only / observer'} mode)`);
   }
 
   onCommand(name, handler) {
